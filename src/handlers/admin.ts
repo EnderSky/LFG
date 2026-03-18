@@ -40,12 +40,26 @@ export async function handleAdmin(ctx: BotContext): Promise<void> {
       .row()
       .text(`${EMOJI.STATS} Statistics`, 'admin:stats');
 
-    await ctx.reply(formatAdminPanelMessage(ctx.dbUser.first_name), {
-      reply_markup: keyboard,
-    });
+    const message = formatAdminPanelMessage(ctx.dbUser.first_name);
+
+    // If called from callback (e.g., "Back to Admin Panel"), edit the message
+    // If called from command (/admin), send a new message
+    if (ctx.callbackQuery) {
+      await ctx.editMessageText(message, {
+        reply_markup: keyboard,
+      });
+    } else {
+      await ctx.reply(message, {
+        reply_markup: keyboard,
+      });
+    }
   } catch (error) {
     console.error('Error showing admin panel:', error);
-    await ctx.reply('❌ Error loading admin panel.');
+    if (ctx.callbackQuery) {
+      await ctx.answerCallbackQuery('❌ Error loading admin panel.');
+    } else {
+      await ctx.reply('❌ Error loading admin panel.');
+    }
   }
 }
 
