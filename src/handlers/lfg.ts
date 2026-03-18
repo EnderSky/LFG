@@ -9,6 +9,9 @@ import { getCategoriesForHostel } from '../services/categories.js';
 import { getResourcesByHostel, isResourceAvailable, checkInResource } from '../services/resources.js';
 import { postGroupToChannel } from '../services/telegram.js';
 import { EMOJI, CONFIG, TIME_PRESETS } from '../utils/constants.js';
+import { log } from '../utils/logger.js';
+import { validateGroupTitle } from '../utils/validation.js';
+import { checkRateLimit } from '../middleware/rateLimit.js';
 
 /**
  * LFG (Looking For Group) handler
@@ -40,9 +43,28 @@ export async function handleLfg(ctx: BotContext): Promise<void> {
   }
 
   try {
+    // Check rate limiting for group creation
+    const rateLimitResult = checkRateLimit(ctx.from.id, 'group_create');
+    if (!rateLimitResult.allowed) {
+      const waitTime = rateLimitResult.resetTime 
+        ? Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+        : 60;
+      await ctx.reply(
+        `${EMOJI.WARNING} Please wait ${waitTime} seconds before creating another group.`
+      );
+      return;
+    }
+
     // Check if user can create more groups
     const activeCount = await getCreatorActiveGroupCount(ctx.dbUser.id);
     if (activeCount >= CONFIG.MAX_ACTIVE_GROUPS_AS_CREATOR) {
+      log.userAction(
+        'Group creation blocked - max active groups reached',
+        ctx.dbUser.id,
+        ctx.from.id,
+        'lfg_blocked_max_groups'
+      );
+      
       await ctx.reply(
         `${EMOJI.WARNING} You already have ${CONFIG.MAX_ACTIVE_GROUPS_AS_CREATOR} active groups.\n\n` +
         `Please wait for them to complete or cancel one before creating a new group.`
@@ -50,13 +72,24 @@ export async function handleLfg(ctx: BotContext): Promise<void> {
       return;
     }
 
+    log.userAction(
+      'Started group creation flow',
+      ctx.dbUser.id,
+      ctx.from.id,
+      'lfg_started'
+    );
+
     // Initialize state
     groupCreationState.set(ctx.from.id, { step: 'category' });
 
     // Show category selection
     await showCategorySelection(ctx);
   } catch (error) {
-    console.error('Error starting LFG flow:', error);
+    log.error('Error starting LFG flow', {
+      userId: ctx.dbUser.id,
+      telegramId: ctx.from.id,
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
     await ctx.reply('❌ Error starting group creation. Please try again.');
   }
 }
@@ -147,21 +180,24 @@ export async function handleLfgTitleInput(ctx: BotContext): Promise<boolean> {
   const state = groupCreationState.get(ctx.from.id);
   if (!state || state.step !== 'title') return false;
 
-  const title = ctx.message.text.trim();
+  const title = ctx.message.text;
 
-  // Validate title
-  if (title.length < 2) {
-    await ctx.reply('Title is too short. Please enter at least 2 characters:');
+  // Validate title using validation utility
+  const validation = validateGroupTitle(title);
+  if (!validation.isValid) {
+    await ctx.reply(`❌ ${validation.error}\n\nPlease enter a valid title for your group:`);
     return true;
   }
 
-  if (title.length > 50) {
-    await ctx.reply('Title is too long. Please enter at most 50 characters:');
-    return true;
-  }
+  log.userAction(
+    'Entered group title',
+    ctx.dbUser?.id || 'unknown',
+    ctx.from.id,
+    'lfg_title_entered'
+  );
 
   // Update state
-  state.title = title;
+  state.title = validation.sanitized!;
   state.step = 'players';
 
   // Show player count selection

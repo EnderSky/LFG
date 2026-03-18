@@ -202,13 +202,13 @@ This document outlines the implementation plan for building the LFG Telegram bot
   - Handle admin panel callbacks
 
 #### 3.5 User Approval Flow
-- [ ] Pending users list view
-- [ ] Approve button callback
-- [ ] Reject button callback
-- [ ] Quick approve command: `/approve <user_id>`
-- [ ] Quick reject command: `/reject <user_id>`
-- [ ] Send notifications to users and admins
-- [ ] Update user status in database
+- [x] Pending users list view
+- [x] Approve button callback
+- [x] Reject button callback
+- [x] Quick approve command: `/approve <username>`
+- [x] Quick reject command: `/reject <username>`
+- [x] Send notifications to users and admins
+- [x] Update user status in database
 
 **Deliverables**:
 - Admin panel accessible
@@ -381,9 +381,8 @@ This document outlines the implementation plan for building the LFG Telegram bot
   - `canUserJoinGroup()` (validation)
 
 #### 6.2 Join Functionality
-- [ ] Create `src/handlers/join.ts`:
+- [x] Join functionality implemented via inline buttons in browse interface:
   - Handle join button from browse
-  - Handle `/join <group_id>` command
   - Validate user can join:
     - Not already in group
     - Group not full
@@ -397,8 +396,7 @@ This document outlines the implementation plan for building the LFG Telegram bot
   - Handle resource conflicts
 
 #### 6.3 Leave Functionality
-- [ ] Create `src/handlers/leave.ts`:
-  - Handle `/leave <group_id>` command
+- [x] Leave functionality implemented via inline buttons in group management:
   - Remove user from group_members
   - Decrement current_players
   - Send confirmation
@@ -585,11 +583,11 @@ This document outlines the implementation plan for building the LFG Telegram bot
   - Export data option (CSV/JSON)
 
 #### 9.6 Admin Commands
-- [ ] Quick commands:
+- [x] Quick commands:
   - `/stats` - Quick stats view
-  - `/cancel <group_id>` - Cancel group
   - `/users` - User count
   - `/pending` - Pending user count
+  - Group cancellation implemented via admin panel interface
 
 **Deliverables**:
 - Admins can view all groups and cancel

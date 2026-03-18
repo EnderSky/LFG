@@ -207,7 +207,7 @@ Now that the basic bot is running, you're ready for:
 - ✅ Phase 3: Admin approval system (partially done - notifications work!)
 - 🔄 Phase 4: Resource management
 - 🔄 Phase 5: Group creation and browsing
-- 🔄 Phase 6: Join/leave groups
+- 🔄 Phase 6: Group participation (join/leave via inline buttons)
 
 The bot will continue to evolve with each phase!
 

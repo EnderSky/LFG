@@ -6,9 +6,18 @@
     "type": "module",
     "scripts": {
         "dev": "tsx watch src/index.ts",
+        "dev:debug": "LOG_LEVEL=DEBUG tsx watch src/index.ts",
         "build": "tsc",
+        "build:watch": "tsc --watch",
         "start": "node dist/index.js",
-        "typecheck": "tsc --noEmit"
+        "start:prod": "NODE_ENV=production LOG_LEVEL=INFO node dist/index.js",
+        "typecheck": "tsc --noEmit",
+        "typecheck:watch": "tsc --noEmit --watch",
+        "lint": "echo 'No linter configured yet'",
+        "test": "echo 'No tests configured yet'",
+        "clean": "rm -rf dist",
+        "prebuild": "npm run clean",
+        "prestart": "npm run build"
     },
     "keywords": [
         "telegram",
@@ -28,5 +37,8 @@
         "@types/node": "^25.5.0",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3"
+    },
+    "engines": {
+        "node": ">=18.0.0"
     }
 }

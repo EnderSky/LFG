@@ -243,9 +243,11 @@ Bot: "Perfect! Here's your group:
      📅 Starts in 30 minutes (7:30 PM)
      📺 Resource: TV Lounge A (reserved)
      
-     Group link: /join_ABC123
+     Your group is now live! Others can join via /browse.
      
-     Your group is now live! Others can join via /browse or the group link."
+     → Group posted to hostel's public channel
+     → TV Lounge A automatically checked in for this group
+     → Group expires in 6 hours from scheduled time"
      
      → Group posted to hostel's public channel
      → TV Lounge A automatically checked in for this group
@@ -290,8 +292,7 @@ Bot: "You've joined Mario Kart 8! 🎉
      - The group is full
      - It's time to play (15min before)
      
-     Use /mygroups to see all your groups
-     Use /leave ABC123 to leave this group"
+     Use /mygroups to see all your groups"
      
      → Notification sent to group creator and other members
      → If group is now full (4/4), update status and notify all
@@ -602,8 +603,6 @@ Each hostel has a Telegram channel where new groups are announced:
 👥 2/4 players
 ⏰ Starts in 30 minutes (7:30 PM)
 📺 TV Lounge A
-
-Join: /join_ABC123
 ```
 
 ## Automatic Cleanup & Expiry
@@ -868,8 +867,6 @@ When ready for production, migration to Cloudflare Workers will require:
 │   │   ├── help.ts             # /help command
 │   │   ├── lfg.ts              # /lfg group creation flow
 │   │   ├── browse.ts           # /browse groups
-│   │   ├── join.ts             # /join command
-│   │   ├── leave.ts            # /leave command
 │   │   ├── mygroups.ts         # /mygroups command
 │   │   ├── resources.ts        # /resources command
 │   │   ├── checkout.ts         # /checkout command
@@ -996,17 +993,14 @@ ARCHIVE_INTERVAL=3600000            # 1 hour
 - `/help` - Show help message
 - `/lfg` - Create a new group
 - `/browse` - Browse available groups
-- `/join <group_id>` - Join a specific group
-- `/leave <group_id>` - Leave a group
 - `/mygroups` - View your active groups
 - `/resources` - View resource availability
 - `/checkout` - Check out of resources
 
 ### Admin Commands
 - `/admin` - Open admin panel
-- `/approve <user_id>` - Quick approve a user
-- `/reject <user_id>` - Quick reject a user
-- `/cancel <group_id>` - Cancel a group
+- `/approve <username>` - Quick approve a user
+- `/reject <username>` - Quick reject a user
 - `/stats` - Quick view statistics
 
 ## Default Settings

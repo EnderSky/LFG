@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { bot, initializeBot } from './bot.js';
 import { testConnection } from './services/database.js';
 import { startScheduler, stopScheduler } from './scheduler.js';
+import { log } from './utils/logger.js';
 
 // Load environment variables
 dotenv.config();
@@ -10,18 +11,25 @@ dotenv.config();
  * Main entry point for the LFG bot
  */
 async function main() {
-  console.log('🚀 Starting LFG Bot...\n');
+  log.info('🚀 Starting LFG Bot...', {
+    nodeVersion: process.version,
+    nodeEnv: process.env.NODE_ENV,
+    platform: process.platform,
+  });
 
   // Test database connection
-  console.log('Testing database connection...');
+  log.info('Testing database connection...');
   const dbConnected = await testConnection();
   
   if (!dbConnected) {
-    console.error('❌ Failed to connect to database. Please check your Supabase configuration.');
+    log.error('Failed to connect to database', {
+      supabaseUrl: process.env.SUPABASE_URL ? 'configured' : 'missing',
+      supabaseKey: process.env.SUPABASE_ANON_KEY ? 'configured' : 'missing',
+    });
     process.exit(1);
   }
   
-  console.log('✅ Database connected successfully\n');
+  log.info('Database connected successfully');
 
   // Initialize bot with handlers
   initializeBot();
@@ -30,33 +38,38 @@ async function main() {
   startScheduler();
 
   // Start bot with long polling
-  console.log('Starting bot with long polling...');
-  console.log('Bot is running! Press Ctrl+C to stop.\n');
+  log.info('Starting bot with long polling...');
   
   try {
     await bot.start({
       onStart: (botInfo) => {
-        console.log(`✅ Bot started as @${botInfo.username}`);
+        log.info('Bot started successfully', {
+          username: botInfo.username,
+          firstName: botInfo.first_name,
+          id: botInfo.id,
+        });
         console.log('='.repeat(50));
-        console.log('Ready to accept commands!\n');
+        console.log('🤖 Ready to accept commands!\n');
       },
     });
   } catch (error) {
-    console.error('❌ Error starting bot:', error);
+    log.error('Error starting bot', {
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
     process.exit(1);
   }
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n\n🛑 Received SIGINT, stopping bot...');
+  log.info('Received SIGINT, stopping bot...');
   stopScheduler();
   bot.stop();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n\n🛑 Received SIGTERM, stopping bot...');
+  log.info('Received SIGTERM, stopping bot...');
   stopScheduler();
   bot.stop();
   process.exit(0);
@@ -64,17 +77,23 @@ process.on('SIGTERM', () => {
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught exception:', error);
+  log.error('Uncaught exception occurred', { error });
+  stopScheduler();
   bot.stop();
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled rejection at:', promise, 'reason:', reason);
+  log.error('Unhandled rejection occurred', {
+    reason: reason instanceof Error ? reason : new Error(String(reason)),
+    promise: promise.toString(),
+  });
 });
 
 // Start the bot
 main().catch((error) => {
-  console.error('❌ Fatal error:', error);
+  log.error('Fatal error during startup', {
+    error: error instanceof Error ? error : new Error(String(error)),
+  });
   process.exit(1);
 });

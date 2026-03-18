@@ -2,6 +2,7 @@ import { Bot } from 'grammy';
 import { BotContext } from './types/index.js';
 import { initNotifications } from './services/notifications.js';
 import { initTelegramService } from './services/telegram.js';
+import { log } from './utils/logger.js';
 
 // Import handlers
 import { handleStart } from './handlers/start.js';
@@ -28,6 +29,11 @@ import { handleCategoryCreationInput, isInCategoryCreationFlow } from './handler
 import { errorMiddleware } from './middleware/error.js';
 import { authMiddleware } from './middleware/auth.js';
 import { adminMiddleware } from './middleware/admin.js';
+import {
+  commandRateLimit,
+  callbackRateLimit,
+  adminRateLimit,
+} from './middleware/rateLimit.js';
 
 // Validate bot token
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -41,7 +47,10 @@ export const bot = new Bot<BotContext>(process.env.TELEGRAM_BOT_TOKEN);
  * Initialize bot with all handlers and middleware
  */
 export function initializeBot(): void {
-  console.log('Initializing bot...');
+  log.info('Initializing bot...', { 
+    nodeEnv: process.env.NODE_ENV,
+    logLevel: process.env.LOG_LEVEL,
+  });
 
   // Initialize services that need bot instance
   initNotifications(bot);
@@ -50,58 +59,75 @@ export function initializeBot(): void {
   // Register error handler first
   bot.catch(errorMiddleware);
 
-  // Register command handlers
-  bot.command('start', handleStart);
-  bot.command('help', handleHelp);
+  // Register command handlers with rate limiting
+  bot.command('start', commandRateLimit, handleStart);
+  bot.command('help', commandRateLimit, handleHelp);
 
-  // Resource commands (require auth middleware)
-  bot.command('resources', authMiddleware, handleResources);
-  bot.command('checkout', authMiddleware, handleCheckout);
+  // Resource commands (require auth middleware + rate limiting)
+  bot.command('resources', commandRateLimit, authMiddleware, handleResources);
+  bot.command('checkout', commandRateLimit, authMiddleware, handleCheckout);
 
-  // Group commands (require auth middleware)
-  bot.command('lfg', authMiddleware, handleLfg);
-  bot.command('browse', authMiddleware, handleBrowse);
-  bot.command('mygroups', authMiddleware, handleMyGroups);
+  // Group commands (require auth middleware + rate limiting)
+  bot.command('lfg', commandRateLimit, authMiddleware, handleLfg);
+  bot.command('browse', commandRateLimit, authMiddleware, handleBrowse);
+  bot.command('mygroups', commandRateLimit, authMiddleware, handleMyGroups);
 
-  // Admin commands (require both auth and admin middleware)
-  bot.command('admin', authMiddleware, adminMiddleware, handleAdmin);
-  bot.command('approve', authMiddleware, adminMiddleware, handleApproveCommand);
-  bot.command('reject', authMiddleware, adminMiddleware, handleRejectCommand);
+  // Admin commands (require auth, admin, and admin rate limit middleware)
+  bot.command('admin', commandRateLimit, authMiddleware, adminMiddleware, adminRateLimit, handleAdmin);
+  bot.command('approve', commandRateLimit, authMiddleware, adminMiddleware, adminRateLimit, handleApproveCommand);
+  bot.command('reject', commandRateLimit, authMiddleware, adminMiddleware, adminRateLimit, handleRejectCommand);
 
-  // Register callback query handler
-  bot.on('callback_query:data', handleCallbackQuery);
+  // Register callback query handler with rate limiting
+  bot.on('callback_query:data', callbackRateLimit, handleCallbackQuery);
 
   // Text message handler for multi-step flows
-  bot.on('message:text', async (ctx) => {
-    // Check if user is in channel config flow (admin)
-    if (ctx.from && isInChannelConfigFlow(ctx.from.id)) {
-      const handled = await handleChannelInput(ctx);
-      if (handled) return;
-    }
+  bot.on('message:text', commandRateLimit, async (ctx) => {
+    const userId = ctx.from?.id;
+    if (!userId) return;
 
-    // Check if user is in category creation flow (admin)
-    if (ctx.from && isInCategoryCreationFlow(ctx.from.id)) {
-      const handled = await handleCategoryCreationInput(ctx);
-      if (handled) return;
-    }
-
-    // Check if user is in resource creation flow (admin)
-    if (ctx.from && isInResourceCreationFlow(ctx.from.id)) {
-      const handled = await handleResourceCreationInput(ctx);
-      if (handled) return;
-    }
-
-    // Check if user is in LFG creation flow (title step)
-    if (ctx.from && isInLfgCreationFlow(ctx.from.id)) {
-      const step = getLfgCreationStep(ctx.from.id);
-      if (step === 'title') {
-        const handled = await handleLfgTitleInput(ctx);
+    try {
+      // Check if user is in channel config flow (admin)
+      if (isInChannelConfigFlow(userId)) {
+        const handled = await handleChannelInput(ctx);
         if (handled) return;
       }
-    }
 
-    // No handler matched - ignore unknown text messages
+      // Check if user is in category creation flow (admin)
+      if (isInCategoryCreationFlow(userId)) {
+        const handled = await handleCategoryCreationInput(ctx);
+        if (handled) return;
+      }
+
+      // Check if user is in resource creation flow (admin)
+      if (isInResourceCreationFlow(userId)) {
+        const handled = await handleResourceCreationInput(ctx);
+        if (handled) return;
+      }
+
+      // Check if user is in LFG creation flow (title step)
+      if (isInLfgCreationFlow(userId)) {
+        const step = getLfgCreationStep(userId);
+        if (step === 'title') {
+          const handled = await handleLfgTitleInput(ctx);
+          if (handled) return;
+        }
+      }
+
+      // No handler matched - log unhandled text message
+      log.debug('Unhandled text message', {
+        userId: userId.toString(),
+        telegramId: userId,
+        messageLength: ctx.message?.text?.length,
+        messagePreview: ctx.message?.text?.substring(0, 50),
+      });
+    } catch (error) {
+      log.error('Error in text message handler', {
+        userId: userId.toString(),
+        telegramId: userId,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+    }
   });
 
-  console.log('Bot initialized successfully');
+  log.info('Bot initialized successfully');
 }

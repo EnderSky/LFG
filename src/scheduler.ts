@@ -20,6 +20,7 @@ import {
 import { supabase } from './services/database.js';
 import { Tables } from './types/database.js';
 import { addMinutes } from './utils/datetime.js';
+import { log } from './utils/logger.js';
 
 /**
  * Background scheduler for automated tasks
@@ -34,38 +35,31 @@ let archiveInterval: NodeJS.Timeout | null = null;
  * Start all scheduler jobs
  */
 export function startScheduler(): void {
-  console.log('Starting background scheduler...');
+  log.info('Starting background scheduler...');
 
   // Notification check job - runs every 5 minutes
   const notificationMs = CONFIG.NOTIFICATION_CHECK_INTERVAL_MS;
-  console.log(`  - Notification check: every ${notificationMs / 60000} minutes`);
+  log.info(`Notification check interval: ${notificationMs / 60000} minutes`);
   notificationInterval = setInterval(runNotificationCheck, notificationMs);
 
   // Cleanup job - runs every 15 minutes
   const cleanupMs = CONFIG.CLEANUP_INTERVAL_MS;
-  console.log(`  - Cleanup job: every ${cleanupMs / 60000} minutes`);
+  log.info(`Cleanup job interval: ${cleanupMs / 60000} minutes`);
   cleanupInterval = setInterval(runCleanupJob, cleanupMs);
 
   // Archive job - runs every hour
   const archiveMs = CONFIG.ARCHIVE_INTERVAL_MS;
-  console.log(`  - Archive job: every ${archiveMs / 3600000} hour(s)`);
+  log.info(`Archive job interval: ${archiveMs / 60000} minutes`);
   archiveInterval = setInterval(runArchiveJob, archiveMs);
 
-  // Run initial checks after a short delay
-  setTimeout(() => {
-    console.log('Running initial scheduler checks...');
-    runNotificationCheck();
-    runCleanupJob();
-  }, 5000);
-
-  console.log('Scheduler started successfully\n');
+  log.info('Background scheduler started successfully');
 }
 
 /**
  * Stop all scheduler jobs
  */
 export function stopScheduler(): void {
-  console.log('Stopping scheduler...');
+  log.info('Stopping scheduler...');
 
   if (notificationInterval) {
     clearInterval(notificationInterval);
@@ -82,7 +76,7 @@ export function stopScheduler(): void {
     archiveInterval = null;
   }
 
-  console.log('Scheduler stopped');
+  log.info('Scheduler stopped');
 }
 
 // ============================================================================
@@ -95,10 +89,14 @@ export function stopScheduler(): void {
  */
 async function runNotificationCheck(): Promise<void> {
   try {
+    log.debug('Running notification check job');
     await checkGroupsStartingSoon();
     await checkResourcesExpiringSoon();
+    log.debug('Notification check job completed');
   } catch (error) {
-    console.error('Error in notification check job:', error);
+    log.error('Error in notification check job', {
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
   }
 }
 

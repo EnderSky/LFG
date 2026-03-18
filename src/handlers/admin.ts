@@ -1,8 +1,9 @@
 import { InlineKeyboard } from 'grammy';
 import { BotContext } from '../types/index.js';
-import { getPendingUsers, approveUser, rejectUser, getUserById } from '../services/users.js';
+import { getPendingUsers, approveUser, rejectUser, getUserById, getUserByUsername } from '../services/users.js';
 import { notifyUserApproved, notifyUserRejected } from '../services/notifications.js';
 import { formatAdminPanelMessage, formatTimeAgo } from '../utils/formatting.js';
+import { validateUsername } from '../utils/validation.js';
 import { EMOJI } from '../utils/constants.js';
 
 /**
@@ -239,32 +240,47 @@ export async function handleRejectUser(
 export async function handleApproveCommand(ctx: BotContext): Promise<void> {
   const args = ctx.message?.text?.split(' ');
 
-  if (!args || args.length < 2) {
-    await ctx.reply('Usage: /approve <user_id>\n\nExample:\n/approve <code>550e8400-e29b-41d4-a716-446655440000</code>', {
+  if (!args || args.length < 2 || !args[1] || args[1].trim() === '') {
+    await ctx.reply('Usage: /approve &lt;username&gt;\n\nExample:\n/approve johndoe\n/approve @johndoe', {
       parse_mode: 'HTML',
     });
     return;
   }
 
-  const userId = args[1];
+  const usernameInput = args[1].trim();
+
+  // Validate username format
+  const { isValid, error, sanitized } = validateUsername(usernameInput);
+  if (!isValid) {
+    await ctx.reply(`❌ ${error}\n\nExample: /approve johndoe`);
+    return;
+  }
+
+  const validUsername = sanitized!;
 
   try {
-    // Get user details
-    const user = await getUserById(userId);
-
-    if (!user) {
-      await ctx.reply('❌ User not found. Please check the user ID.');
+    // Get admin's hostel ID
+    if (!ctx.dbUser) {
+      await ctx.reply('❌ Authentication required.');
       return;
     }
 
-    // Verify user is from same hostel as admin
-    if (ctx.dbUser && user.hostel_id !== ctx.dbUser.hostel_id) {
-      await ctx.reply('❌ You can only approve users from your hostel.');
+    // Get user details by username (within same hostel)
+    const user = await getUserByUsername(validUsername, ctx.dbUser.hostel_id);
+
+    if (!user) {
+      await ctx.reply(`❌ User @${validUsername} not found in your hostel.`);
+      return;
+    }
+
+    // Check if user is already approved
+    if (user.status === 'approved') {
+      await ctx.reply('❌ User is already approved.');
       return;
     }
 
     // Approve user
-    await approveUser(userId);
+    await approveUser(user.id);
 
     // Notify user
     await notifyUserApproved(user.telegram_id);
@@ -284,32 +300,48 @@ export async function handleApproveCommand(ctx: BotContext): Promise<void> {
 export async function handleRejectCommand(ctx: BotContext): Promise<void> {
   const args = ctx.message?.text?.split(' ');
 
-  if (!args || args.length < 2) {
-    await ctx.reply('Usage: /reject <user_id>\n\nExample:\n/reject <code>550e8400-e29b-41d4-a716-446655440000</code>', {
+  if (!args || args.length < 2 || !args[1] || args[1].trim() === '') {
+    await ctx.reply('Usage: /reject &lt;username&gt;\n\nExample:\n/reject johndoe\n/reject @johndoe', {
       parse_mode: 'HTML',
     });
     return;
   }
 
-  const userId = args[1];
+  const usernameInput = args[1].trim();
+
+  // Validate username format
+  const { isValid, error, sanitized } = validateUsername(usernameInput);
+  if (!isValid) {
+    await ctx.reply(`❌ ${error}\n\nExample: /reject johndoe`);
+    return;
+  }
+
+  const validUsername = sanitized!;
 
   try {
-    // Get user details
-    const user = await getUserById(userId);
-
-    if (!user) {
-      await ctx.reply('❌ User not found. Please check the user ID.');
+    // Get admin's hostel ID
+    if (!ctx.dbUser) {
+      await ctx.reply('❌ Authentication required.');
       return;
     }
 
-    // Verify user is from same hostel as admin
-    if (ctx.dbUser && user.hostel_id !== ctx.dbUser.hostel_id) {
-      await ctx.reply('❌ You can only reject users from your hostel.');
+    // Get user details by username (within same hostel)
+    const user = await getUserByUsername(validUsername, ctx.dbUser.hostel_id);
+
+    if (!user) {
+      await ctx.reply(`❌ User @${validUsername} not found in your hostel.`);
+      return;
+    }
+
+    // Check if user is not pending (already approved/banned)
+    if (user.status !== 'pending') {
+      const statusText = user.status === 'approved' ? 'already approved' : 'already banned';
+      await ctx.reply(`❌ User is ${statusText}.`);
       return;
     }
 
     // Reject user
-    await rejectUser(userId);
+    await rejectUser(user.id);
 
     // Notify user
     await notifyUserRejected(user.telegram_id);

@@ -97,6 +97,7 @@ SUPABASE_SERVICE_KEY=your_service_key_here
 
 # Environment
 NODE_ENV=development
+LOG_LEVEL=DEBUG
 
 # Scheduler intervals (milliseconds) - optional, defaults provided
 NOTIFICATION_CHECK_INTERVAL=300000  # 5 minutes
@@ -163,8 +164,6 @@ WHERE u.telegram_id = YOUR_TELEGRAM_ID;
 - `/help` - Display help message and available commands
 - `/lfg` - Create a new gaming group
 - `/browse` - Browse and join available groups
-- `/join <group_id>` - Join a specific group by ID
-- `/leave <group_id>` - Leave a group you've joined
 - `/mygroups` - View all your active groups
 - `/resources` - Check availability of shared resources
 - `/checkout` - Check out of resources you're using
@@ -172,9 +171,8 @@ WHERE u.telegram_id = YOUR_TELEGRAM_ID;
 ### Admin Commands
 
 - `/admin` - Open the admin control panel
-- `/approve <user_id>` - Quick approve a pending user
-- `/reject <user_id>` - Quick reject a pending user
-- `/cancel <group_id>` - Cancel an active group
+- `/approve <username>` - Quick approve a pending user
+- `/reject <username>` - Quick reject a pending user
 - `/stats` - View quick statistics
 
 ## Default Game Categories
@@ -205,7 +203,7 @@ The bot automatically manages group and resource lifecycles:
 
 ## Security & Privacy
 
-- **Admin Approval**: Only approved users can create/join groups
+- **Admin Approval**: Only approved users can create and participate in groups
 - **Hostel Isolation**: Users only see data for their hostel
 - **Row Level Security**: Database enforces access control
 - **Secure Tokens**: Bot token and keys stored in .env (never committed)

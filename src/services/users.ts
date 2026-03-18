@@ -28,6 +28,29 @@ export async function getUserByTelegramId(telegramId: number): Promise<User | nu
 }
 
 /**
+ * Get user by Telegram username (without @)
+ */
+export async function getUserByUsername(username: string, hostelId: string): Promise<User | null> {
+  const { data, error } = await supabase
+    .from(Tables.USERS)
+    .select('*')
+    .eq('username', username)
+    .eq('hostel_id', hostelId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null;
+    }
+    console.error('Error fetching user by username:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
  * Get user by ID (UUID)
  */
 export async function getUserById(userId: string): Promise<User | null> {
