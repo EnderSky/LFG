@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { bot, initializeBot } from './bot.js';
 import { testConnection } from './services/database.js';
+import { startScheduler, stopScheduler } from './scheduler.js';
 
 // Load environment variables
 dotenv.config();
@@ -25,6 +26,9 @@ async function main() {
   // Initialize bot with handlers
   initializeBot();
 
+  // Start background scheduler
+  startScheduler();
+
   // Start bot with long polling
   console.log('Starting bot with long polling...');
   console.log('Bot is running! Press Ctrl+C to stop.\n');
@@ -46,12 +50,14 @@ async function main() {
 // Handle graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n\n🛑 Received SIGINT, stopping bot...');
+  stopScheduler();
   bot.stop();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   console.log('\n\n🛑 Received SIGTERM, stopping bot...');
+  stopScheduler();
   bot.stop();
   process.exit(0);
 });

@@ -53,6 +53,31 @@ import {
   handleKeepCategoryName,
 } from './adminCategories.js';
 import {
+  handleAdminGroups,
+  handleAdminGroupList,
+  handleAdminGroupView,
+  handleAdminGroupCancel,
+  handleAdminGroupConfirmCancel,
+} from './adminGroups.js';
+import {
+  handleAdminManagement,
+  handleAdminList,
+  handleAdminView,
+  handleToggleSuperAdmin,
+  handleRemoveAdminConfirm,
+  handleRemoveAdmin,
+  handleAddAdminList,
+  handleAddAdminConfirm,
+  handleAddAdmin,
+} from './adminManagement.js';
+import {
+  handleStatistics,
+  handleStatsOverview,
+  handleStatsGames,
+  handleStatsResources,
+  handleStatsPeakHours,
+} from './adminStats.js';
+import {
   handleBrowseAll,
   handleBrowseCategory,
   handleBrowseMain,
@@ -377,14 +402,115 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
         return;
       }
 
-      // ----- PLACEHOLDER CALLBACKS FOR FUTURE FEATURES -----
+      // ----- ADMIN GROUP MANAGEMENT -----
       if (data === 'admin:groups') {
-        await ctx.answerCallbackQuery('Coming in Phase 6!');
+        await handleAdminGroups(ctx);
         return;
       }
 
-      if (data === 'admin:admins' || data === 'admin:stats') {
-        await ctx.answerCallbackQuery('Coming in Phase 9!');
+      if (data.startsWith('admin:grp:list')) {
+        const parts = data.split(':');
+        const page = parts[3] ? parseInt(parts[3]) : 1;
+        await handleAdminGroupList(ctx, page);
+        return;
+      }
+
+      if (data.startsWith('admin:grp:view:')) {
+        const groupId = data.split(':')[3];
+        await handleAdminGroupView(ctx, groupId);
+        return;
+      }
+
+      if (data.startsWith('admin:grp:cancel:')) {
+        const groupId = data.split(':')[3];
+        await handleAdminGroupCancel(ctx, groupId);
+        return;
+      }
+
+      if (data.startsWith('admin:grp:confirm:')) {
+        const groupId = data.split(':')[3];
+        await handleAdminGroupConfirmCancel(ctx, groupId);
+        return;
+      }
+
+      // ----- ADMIN MANAGEMENT (Super Admin only) -----
+      if (data === 'admin:admins') {
+        await handleAdminManagement(ctx);
+        return;
+      }
+
+      if (data.startsWith('admin:adm:list')) {
+        const parts = data.split(':');
+        const page = parts[3] ? parseInt(parts[3]) : 1;
+        await handleAdminList(ctx, page);
+        return;
+      }
+
+      if (data.startsWith('admin:adm:view:')) {
+        const userId = data.split(':')[3];
+        await handleAdminView(ctx, userId);
+        return;
+      }
+
+      if (data.startsWith('admin:adm:super:')) {
+        const userId = data.split(':')[3];
+        await handleToggleSuperAdmin(ctx, userId);
+        return;
+      }
+
+      if (data.startsWith('admin:adm:remove:')) {
+        const userId = data.split(':')[3];
+        await handleRemoveAdminConfirm(ctx, userId);
+        return;
+      }
+
+      if (data.startsWith('admin:adm:confirm:')) {
+        const userId = data.split(':')[3];
+        await handleRemoveAdmin(ctx, userId);
+        return;
+      }
+
+      if (data.startsWith('admin:adm:add')) {
+        const parts = data.split(':');
+        const page = parts[3] ? parseInt(parts[3]) : 1;
+        await handleAddAdminList(ctx, page);
+        return;
+      }
+
+      if (data.startsWith('admin:adm:new:')) {
+        const userId = data.split(':')[3];
+        await handleAddAdminConfirm(ctx, userId);
+        return;
+      }
+
+      if (data.startsWith('admin:adm:save:')) {
+        const userId = data.split(':')[3];
+        await handleAddAdmin(ctx, userId);
+        return;
+      }
+
+      if (data === 'admin:stats') {
+        await handleStatistics(ctx);
+        return;
+      }
+
+      if (data === 'admin:stats:overview') {
+        await handleStatsOverview(ctx);
+        return;
+      }
+
+      if (data === 'admin:stats:games') {
+        await handleStatsGames(ctx);
+        return;
+      }
+
+      if (data === 'admin:stats:resources') {
+        await handleStatsResources(ctx);
+        return;
+      }
+
+      if (data === 'admin:stats:hours') {
+        await handleStatsPeakHours(ctx);
         return;
       }
 

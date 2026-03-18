@@ -66,6 +66,7 @@ export interface ResourceSession {
   checked_out_at: string | null;
   auto_checkout_at: string;
   status: ResourceSessionStatus;
+  warned_expiring: boolean;
 }
 
 export interface Group {
