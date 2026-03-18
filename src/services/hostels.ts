@@ -63,3 +63,25 @@ export async function getHostelBySlug(slug: string): Promise<Hostel | null> {
 
   return data;
 }
+
+/**
+ * Update hostel's Telegram channel ID
+ */
+export async function updateHostelChannel(
+  hostelId: string,
+  channelId: string | null
+): Promise<Hostel> {
+  const { data, error } = await supabase
+    .from(Tables.HOSTELS)
+    .update({ telegram_channel_id: channelId })
+    .eq('id', hostelId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating hostel channel:', error);
+    throw error;
+  }
+
+  return data;
+}

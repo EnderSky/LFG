@@ -27,6 +27,42 @@ import {
   handleDurationSelection,
   handleCancelResourceCreation,
 } from './adminResources.js';
+import {
+  handleLfg,
+  handleLfgCategorySelection,
+  handleLfgPlayerSelection,
+  handleLfgTimingSelection,
+  handleLfgResourceSelection,
+  handleLfgConfirm,
+  handleLfgBack,
+  handleLfgCancel,
+} from './lfg.js';
+import {
+  handleAdminSettings,
+  handleChannelChange,
+  handleChannelRemove,
+} from './adminSettings.js';
+import {
+  handleAdminCategories,
+  handleAdminCategoryList,
+  handleAdminCategoryAdd,
+  handleAdminCategoryEdit,
+  handleAdminCategoryDelete,
+  handleAdminCategoryConfirmDelete,
+  handleIconSelection,
+  handleKeepCategoryName,
+} from './adminCategories.js';
+import {
+  handleBrowseAll,
+  handleBrowseCategory,
+  handleBrowseMain,
+  handleGroupView,
+} from './browse.js';
+import {
+  handleJoinGroup,
+  handleLeaveGroup,
+  handleCancelGroup,
+} from './groups.js';
 import { getUserByTelegramId } from '../services/users.js';
 import { isUserAdmin } from '../services/admins.js';
 
@@ -228,6 +264,13 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
         return;
       }
 
+      // Shortened pattern for force checkout (to stay under 64-byte limit)
+      if (data.startsWith('admin:fc:')) {
+        const sessionId = data.split(':')[2];
+        await handleAdminForceCheckout(ctx, sessionId);
+        return;
+      }
+
       if (data === 'admin:resource:add') {
         await handleAdminResourceAdd(ctx);
         return;
@@ -273,12 +316,68 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
         return;
       }
 
-      // ----- PLACEHOLDER CALLBACKS FOR FUTURE FEATURES -----
-      if (data === 'admin:categories') {
-        await ctx.answerCallbackQuery('Coming in Phase 5!');
+      // ----- ADMIN SETTINGS -----
+      if (data === 'admin:settings') {
+        await handleAdminSettings(ctx);
         return;
       }
 
+      if (data === 'admin:settings:channel:change') {
+        await handleChannelChange(ctx);
+        return;
+      }
+
+      if (data === 'admin:settings:channel:remove') {
+        await handleChannelRemove(ctx);
+        return;
+      }
+
+      // ----- ADMIN CATEGORY MANAGEMENT -----
+      if (data === 'admin:categories') {
+        await handleAdminCategories(ctx);
+        return;
+      }
+
+      if (data === 'admin:cat:list') {
+        await handleAdminCategoryList(ctx);
+        return;
+      }
+
+      if (data === 'admin:cat:add') {
+        await handleAdminCategoryAdd(ctx);
+        return;
+      }
+
+      if (data.startsWith('admin:cat:edit:')) {
+        const categoryId = data.split(':')[3];
+        await handleAdminCategoryEdit(ctx, categoryId);
+        return;
+      }
+
+      if (data === 'admin:cat:keepname') {
+        await handleKeepCategoryName(ctx);
+        return;
+      }
+
+      if (data.startsWith('admin:cat:icon:')) {
+        const icon = data.split(':')[3];
+        await handleIconSelection(ctx, icon);
+        return;
+      }
+
+      if (data.startsWith('admin:cat:del:')) {
+        const categoryId = data.split(':')[3];
+        await handleAdminCategoryDelete(ctx, categoryId);
+        return;
+      }
+
+      if (data.startsWith('admin:cat:confirm:')) {
+        const categoryId = data.split(':')[3];
+        await handleAdminCategoryConfirmDelete(ctx, categoryId);
+        return;
+      }
+
+      // ----- PLACEHOLDER CALLBACKS FOR FUTURE FEATURES -----
       if (data === 'admin:groups') {
         await ctx.answerCallbackQuery('Coming in Phase 6!');
         return;
@@ -296,11 +395,151 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
     }
 
     // =========================================================================
-    // OTHER CALLBACKS (future phases)
+    // LFG (GROUP CREATION) CALLBACKS - Require user authentication
     // =========================================================================
-    // case 'join_group':
-    // case 'leave_group':
-    // etc.
+    if (data.startsWith('lfg:')) {
+      const isAuthenticated = await authenticateUserCallback(ctx);
+      if (!isAuthenticated) {
+        return;
+      }
+
+      if (data === 'lfg:start') {
+        await handleLfg(ctx);
+        return;
+      }
+
+      if (data.startsWith('lfg:category:')) {
+        const categoryId = data.split(':')[2];
+        await handleLfgCategorySelection(ctx, categoryId);
+        return;
+      }
+
+      if (data.startsWith('lfg:players:')) {
+        const count = parseInt(data.split(':')[2]);
+        await handleLfgPlayerSelection(ctx, count);
+        return;
+      }
+
+      if (data.startsWith('lfg:time:')) {
+        const minutes = parseInt(data.split(':')[2]);
+        await handleLfgTimingSelection(ctx, minutes);
+        return;
+      }
+
+      if (data === 'lfg:resource:skip') {
+        await handleLfgResourceSelection(ctx, null);
+        return;
+      }
+
+      if (data.startsWith('lfg:resource:')) {
+        const resourceId = data.split(':')[2];
+        await handleLfgResourceSelection(ctx, resourceId);
+        return;
+      }
+
+      if (data === 'lfg:confirm') {
+        await handleLfgConfirm(ctx);
+        return;
+      }
+
+      if (data.startsWith('lfg:back:')) {
+        const toStep = data.split(':')[2];
+        await handleLfgBack(ctx, toStep);
+        return;
+      }
+
+      if (data === 'lfg:cancel') {
+        await handleLfgCancel(ctx);
+        return;
+      }
+
+      await ctx.answerCallbackQuery({ text: '❌ Unknown LFG action.' });
+      return;
+    }
+
+    // =========================================================================
+    // BROWSE CALLBACKS - Require user authentication
+    // =========================================================================
+    if (data.startsWith('browse:')) {
+      const isAuthenticated = await authenticateUserCallback(ctx);
+      if (!isAuthenticated) {
+        return;
+      }
+
+      if (data === 'browse:main') {
+        await handleBrowseMain(ctx);
+        return;
+      }
+
+      if (data.startsWith('browse:all')) {
+        const parts = data.split(':');
+        const page = parts[2] ? parseInt(parts[2]) : 1;
+        await handleBrowseAll(ctx, page);
+        return;
+      }
+
+      if (data.startsWith('browse:category:')) {
+        const parts = data.split(':');
+        const categoryId = parts[2];
+        const page = parts[3] ? parseInt(parts[3]) : 1;
+        await handleBrowseCategory(ctx, categoryId, page);
+        return;
+      }
+
+      await ctx.answerCallbackQuery({ text: '❌ Unknown browse action.' });
+      return;
+    }
+
+    // =========================================================================
+    // GROUP ACTION CALLBACKS - Require user authentication
+    // =========================================================================
+    if (data.startsWith('group:')) {
+      const isAuthenticated = await authenticateUserCallback(ctx);
+      if (!isAuthenticated) {
+        return;
+      }
+
+      if (data.startsWith('group:view:')) {
+        const groupId = data.split(':')[2];
+        await handleGroupView(ctx, groupId);
+        return;
+      }
+
+      if (data.startsWith('group:join:')) {
+        const groupId = data.split(':')[2];
+        await handleJoinGroup(ctx, groupId);
+        return;
+      }
+
+      if (data.startsWith('group:leave:')) {
+        const groupId = data.split(':')[2];
+        await handleLeaveGroup(ctx, groupId);
+        return;
+      }
+
+      if (data.startsWith('group:cancel:')) {
+        const groupId = data.split(':')[2];
+        await handleCancelGroup(ctx, groupId);
+        return;
+      }
+
+      await ctx.answerCallbackQuery({ text: '❌ Unknown group action.' });
+      return;
+    }
+
+    // =========================================================================
+    // MY GROUPS CALLBACKS - Require user authentication
+    // =========================================================================
+    if (data === 'mygroups') {
+      const isAuthenticated = await authenticateUserCallback(ctx);
+      if (!isAuthenticated) {
+        return;
+      }
+
+      const { handleMyGroups } = await import('./groups.js');
+      await handleMyGroups(ctx);
+      return;
+    }
 
     // Unknown callback
     await ctx.answerCallbackQuery({ text: '❌ Unknown action.' });

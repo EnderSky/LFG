@@ -191,8 +191,10 @@ export async function handleAdminActiveSessions(ctx: BotContext): Promise<void> 
       message += `   ${EMOJI.USER} ${userName}\n`;
       message += `   ${EMOJI.CLOCK} ${timeLeft} remaining\n\n`;
 
+      // Use shortened callback pattern to stay under Telegram's 64-byte limit
+      // admin:fc:<uuid> = 9 + 36 = 45 chars (under 64 limit)
       keyboard
-        .text(`Force checkout: ${session.resources?.name}`, `admin:resource:force_checkout:${session.id}`)
+        .text(`${EMOJI.CANCEL} End: ${session.resources?.name}`, `admin:fc:${session.id}`)
         .row();
     }
 

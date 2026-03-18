@@ -38,7 +38,9 @@ export async function handleAdmin(ctx: BotContext): Promise<void> {
       .row()
       .text(`${EMOJI.ADMIN} Manage Admins`, 'admin:admins')
       .row()
-      .text(`${EMOJI.STATS} Statistics`, 'admin:stats');
+      .text(`${EMOJI.STATS} Statistics`, 'admin:stats')
+      .row()
+      .text(`${EMOJI.SETTINGS} Settings`, 'admin:settings');
 
     const message = formatAdminPanelMessage(ctx.dbUser.first_name);
 
