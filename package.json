@@ -1,0 +1,32 @@
+{
+    "name": "lfg",
+    "version": "1.0.0",
+    "description": "A Telegram bot designed to help hostel guests find friends for gaming and manage shared resources across multiple locations.",
+    "main": "dist/index.js",
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "typecheck": "tsc --noEmit"
+    },
+    "keywords": [
+        "telegram",
+        "bot",
+        "gaming",
+        "hostel",
+        "social"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@supabase/supabase-js": "^2.99.2",
+        "dotenv": "^17.3.1",
+        "grammy": "^1.41.1"
+    },
+    "devDependencies": {
+        "@types/node": "^25.5.0",
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3"
+    }
+}
