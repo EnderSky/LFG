@@ -6,14 +6,35 @@ import {
   handleApproveUser,
   handleRejectUser,
 } from './admin.js';
+import {
+  handleResources,
+  handleResourceView,
+  handleResourceCheckIn,
+  handleResourceCheckOut,
+} from './resources.js';
+import { handleCheckoutCallback } from './checkout.js';
+import {
+  handleAdminResources,
+  handleAdminResourceList,
+  handleAdminActiveSessions,
+  handleAdminForceCheckout,
+  handleAdminResourceAdd,
+  handleAdminResourceEdit,
+  handleAdminResourceDelete,
+  handleAdminResourceConfirmDelete,
+  handleSkipDescription,
+  handleCategorySelection,
+  handleDurationSelection,
+  handleCancelResourceCreation,
+} from './adminResources.js';
 import { getUserByTelegramId } from '../services/users.js';
 import { isUserAdmin } from '../services/admins.js';
 
 /**
- * Authenticate and verify admin for admin callbacks
- * Returns true if user is authenticated and is an admin, false otherwise
+ * Authenticate user for regular callbacks
+ * Returns true if user is authenticated and approved, false otherwise
  */
-async function authenticateAdminCallback(ctx: BotContext): Promise<boolean> {
+async function authenticateUserCallback(ctx: BotContext): Promise<boolean> {
   const telegramId = ctx.from?.id;
 
   if (!telegramId) {
@@ -39,16 +60,32 @@ async function authenticateAdminCallback(ctx: BotContext): Promise<boolean> {
     return false;
   }
 
+  // Attach user to context
+  ctx.dbUser = user;
+
+  return true;
+}
+
+/**
+ * Authenticate and verify admin for admin callbacks
+ * Returns true if user is authenticated and is an admin, false otherwise
+ */
+async function authenticateAdminCallback(ctx: BotContext): Promise<boolean> {
+  // First authenticate as regular user
+  const isUserAuth = await authenticateUserCallback(ctx);
+  if (!isUserAuth) {
+    return false;
+  }
+
   // Check admin status
-  const isAdmin = await isUserAdmin(user.id);
+  const isAdmin = await isUserAdmin(ctx.dbUser!.id);
 
   if (!isAdmin) {
     await ctx.answerCallbackQuery({ text: '❌ Admin access required.' });
     return false;
   }
 
-  // Attach user and admin flag to context
-  ctx.dbUser = user;
+  // Attach admin flag to context
   ctx.isAdmin = true;
 
   return true;
@@ -79,6 +116,56 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
     // Handle 'noop' (no operation) for pagination display
     if (data === 'noop') {
       await ctx.answerCallbackQuery();
+      return;
+    }
+
+    // =========================================================================
+    // RESOURCE CALLBACKS - Require user authentication
+    // =========================================================================
+    if (data.startsWith('resource:')) {
+      const isAuthenticated = await authenticateUserCallback(ctx);
+      if (!isAuthenticated) {
+        return;
+      }
+
+      if (data === 'resource:list') {
+        await handleResources(ctx);
+        return;
+      }
+
+      if (data.startsWith('resource:view:')) {
+        const resourceId = data.split(':')[2];
+        await handleResourceView(ctx, resourceId);
+        return;
+      }
+
+      if (data.startsWith('resource:checkin:')) {
+        const resourceId = data.split(':')[2];
+        await handleResourceCheckIn(ctx, resourceId);
+        return;
+      }
+
+      if (data.startsWith('resource:checkout:')) {
+        const resourceId = data.split(':')[2];
+        await handleResourceCheckOut(ctx, resourceId);
+        return;
+      }
+
+      await ctx.answerCallbackQuery({ text: '❌ Unknown resource action.' });
+      return;
+    }
+
+    // =========================================================================
+    // CHECKOUT CALLBACKS - Require user authentication
+    // =========================================================================
+    if (data.startsWith('checkout:')) {
+      const isAuthenticated = await authenticateUserCallback(ctx);
+      if (!isAuthenticated) {
+        return;
+      }
+
+      const sessionId = data.split(':')[1];
+      await handleCheckoutCallback(ctx, sessionId);
       return;
     }
 
@@ -117,12 +204,76 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
         return;
       }
 
-      // Placeholder callbacks for future admin features
+      // ----- ADMIN RESOURCE MANAGEMENT -----
       if (data === 'admin:resources') {
-        await ctx.answerCallbackQuery('Coming in Phase 4!');
+        await handleAdminResources(ctx);
         return;
       }
 
+      if (data.startsWith('admin:resource:list')) {
+        const parts = data.split(':');
+        const page = parts[3] ? parseInt(parts[3]) : 1;
+        await handleAdminResourceList(ctx, page);
+        return;
+      }
+
+      if (data === 'admin:resource:sessions') {
+        await handleAdminActiveSessions(ctx);
+        return;
+      }
+
+      if (data.startsWith('admin:resource:force_checkout:')) {
+        const sessionId = data.split(':')[3];
+        await handleAdminForceCheckout(ctx, sessionId);
+        return;
+      }
+
+      if (data === 'admin:resource:add') {
+        await handleAdminResourceAdd(ctx);
+        return;
+      }
+
+      if (data === 'admin:resource:skip_description') {
+        await handleSkipDescription(ctx);
+        return;
+      }
+
+      if (data === 'admin:resource:cancel') {
+        await handleCancelResourceCreation(ctx);
+        return;
+      }
+
+      if (data.startsWith('admin:resource:category:')) {
+        const categoryId = data.split(':')[3];
+        await handleCategorySelection(ctx, categoryId);
+        return;
+      }
+
+      if (data.startsWith('admin:resource:duration:')) {
+        const hours = parseInt(data.split(':')[3]);
+        await handleDurationSelection(ctx, hours);
+        return;
+      }
+
+      if (data.startsWith('admin:resource:edit:')) {
+        const resourceId = data.split(':')[3];
+        await handleAdminResourceEdit(ctx, resourceId);
+        return;
+      }
+
+      if (data.startsWith('admin:resource:delete:')) {
+        const resourceId = data.split(':')[3];
+        await handleAdminResourceDelete(ctx, resourceId);
+        return;
+      }
+
+      if (data.startsWith('admin:resource:confirm_delete:')) {
+        const resourceId = data.split(':')[3];
+        await handleAdminResourceConfirmDelete(ctx, resourceId);
+        return;
+      }
+
+      // ----- PLACEHOLDER CALLBACKS FOR FUTURE FEATURES -----
       if (data === 'admin:categories') {
         await ctx.answerCallbackQuery('Coming in Phase 5!');
         return;
@@ -149,8 +300,6 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
     // =========================================================================
     // case 'join_group':
     // case 'leave_group':
-    // case 'checkin_resource':
-    // case 'checkout_resource':
     // etc.
 
     // Unknown callback

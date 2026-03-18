@@ -11,6 +11,12 @@ import {
   handleApproveCommand,
   handleRejectCommand,
 } from './handlers/admin.js';
+import { handleResources } from './handlers/resources.js';
+import { handleCheckout } from './handlers/checkout.js';
+import {
+  handleResourceCreationInput,
+  isInResourceCreationFlow,
+} from './handlers/adminResources.js';
 
 // Import middleware
 import { errorMiddleware } from './middleware/error.js';
@@ -41,6 +47,10 @@ export function initializeBot(): void {
   bot.command('start', handleStart);
   bot.command('help', handleHelp);
 
+  // Resource commands (require auth middleware)
+  bot.command('resources', authMiddleware, handleResources);
+  bot.command('checkout', authMiddleware, handleCheckout);
+
   // Admin commands (require both auth and admin middleware)
   bot.command('admin', authMiddleware, adminMiddleware, handleAdmin);
   bot.command('approve', authMiddleware, adminMiddleware, handleApproveCommand);
@@ -49,12 +59,21 @@ export function initializeBot(): void {
   // Register callback query handler
   bot.on('callback_query:data', handleCallbackQuery);
 
+  // Text message handler for multi-step flows (e.g., resource creation)
+  bot.on('message:text', async (ctx) => {
+    // Check if user is in resource creation flow
+    if (ctx.from && isInResourceCreationFlow(ctx.from.id)) {
+      const handled = await handleResourceCreationInput(ctx);
+      if (handled) return;
+    }
+
+    // Future: Add other text input handlers here (group creation, etc.)
+  });
+
   // More commands will be added in later phases:
   // bot.command('lfg', authMiddleware, handleLfg);
   // bot.command('browse', authMiddleware, handleBrowse);
   // bot.command('mygroups', authMiddleware, handleMyGroups);
-  // bot.command('resources', authMiddleware, handleResources);
-  // bot.command('checkout', authMiddleware, handleCheckout);
 
   console.log('Bot initialized successfully');
 }
