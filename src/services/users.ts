@@ -28,6 +28,28 @@ export async function getUserByTelegramId(telegramId: number): Promise<User | nu
 }
 
 /**
+ * Get user by ID (UUID)
+ */
+export async function getUserById(userId: string): Promise<User | null> {
+  const { data, error } = await supabase
+    .from(Tables.USERS)
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null;
+    }
+    console.error('Error fetching user by ID:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
  * Create a pending user
  */
 export async function createPendingUser(

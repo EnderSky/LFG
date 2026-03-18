@@ -6,9 +6,16 @@ import { initNotifications } from './services/notifications.js';
 import { handleStart } from './handlers/start.js';
 import { handleHelp } from './handlers/help.js';
 import { handleCallbackQuery } from './handlers/callbacks.js';
+import {
+  handleAdmin,
+  handleApproveCommand,
+  handleRejectCommand,
+} from './handlers/admin.js';
 
 // Import middleware
 import { errorMiddleware } from './middleware/error.js';
+import { authMiddleware } from './middleware/auth.js';
+import { adminMiddleware } from './middleware/admin.js';
 
 // Validate bot token
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -34,6 +41,11 @@ export function initializeBot(): void {
   bot.command('start', handleStart);
   bot.command('help', handleHelp);
 
+  // Admin commands (require both auth and admin middleware)
+  bot.command('admin', authMiddleware, adminMiddleware, handleAdmin);
+  bot.command('approve', authMiddleware, adminMiddleware, handleApproveCommand);
+  bot.command('reject', authMiddleware, adminMiddleware, handleRejectCommand);
+
   // Register callback query handler
   bot.on('callback_query:data', handleCallbackQuery);
 
@@ -43,7 +55,6 @@ export function initializeBot(): void {
   // bot.command('mygroups', authMiddleware, handleMyGroups);
   // bot.command('resources', authMiddleware, handleResources);
   // bot.command('checkout', authMiddleware, handleCheckout);
-  // bot.command('admin', authMiddleware, adminMiddleware, handleAdmin);
 
   console.log('Bot initialized successfully');
 }

@@ -73,6 +73,7 @@ export const EMOJI = {
   STATS: '📊',
   SETTINGS: '⚙️',
   TOOLS: '🔧',
+  CATEGORY: '🎮',
   
   // Success/Error
   SUCCESS: '🎉',

@@ -213,3 +213,33 @@ export function formatGroupStartingSoonNotification(
   
   return message;
 }
+
+/**
+ * Format admin panel welcome message
+ */
+export function formatAdminPanelMessage(adminName: string): string {
+  return `${EMOJI.ADMIN} Admin Panel
+
+Welcome, ${adminName}!
+
+Select an option below:`;
+}
+
+/**
+ * Format time ago (e.g., "2 hours ago", "3 days ago")
+ * Used for showing when user registered
+ */
+export function formatTimeAgo(date: Date | string): string {
+  const now = new Date();
+  const past = new Date(date);
+  const diffMs = now.getTime() - past.getTime();
+  
+  const minutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(diffMs / 3600000);
+  const days = Math.floor(diffMs / 86400000);
+  
+  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  return 'just now';
+}
