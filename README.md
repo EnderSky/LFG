@@ -70,7 +70,7 @@ LFG (Looking For Groups) creates a digital lobby system for hostel common areas,
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/EnderSky/LFG
 cd LFG
 
 # Install dependencies
